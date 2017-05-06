@@ -56,11 +56,15 @@
                             <input class="number" type="number" title="momentum term" value="0.9" step=".01" id="momentum"></p>
                         <p>smoothing factor (Adadelta):
                             <input class="number" type="number" title="smoothing factor" value="0.9" step=".01" id="smoothing"></p>
+                        <p>smoothing factor 2 (Adam):
+                            <input class="number" type="number" title="smoothing factor 2" value="0.999" step=".001" id="smoothing2"></p>
                         <hr>
                         <p>iterations:
                             <input class="number" type="number" title="number of iterations" value="300" step="10" id="iterations"></p>
-                        <br>
-                        <button id="plotButton">Plot</button><button id="optimizeButton">Optimize</button>
+                        <p><button id="plotButton">Plot</button><button id="optimizeButton">Optimize</button></p>
+                        <hr>
+                        <div id="checkboxes">
+                        </div>
                     </div>
                 </div>
             </div>

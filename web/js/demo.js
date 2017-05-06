@@ -19,6 +19,7 @@ var starty = document.getElementById('starty');
 var learning = document.getElementById('learning');
 var momentum = document.getElementById('momentum');
 var smoothing = document.getElementById('smoothing');
+var smoothing2 = document.getElementById('smoothing2');
 
 var iterations = document.getElementById('iterations');
 iterations.onchange = function () {
@@ -27,6 +28,8 @@ iterations.onchange = function () {
 
 var plotButton = document.getElementById('plotButton');
 var optimizeButton = document.getElementById('optimizeButton');
+
+var checkboxes = document.getElementById('checkboxes');
 
 var predefined = {
     'Hyperbolic paraboloid': {
@@ -160,7 +163,7 @@ function createSurface(fun, steps, xrange, yrange) {
 }
 
 function gradient(fun) {
-    var h = 0.0001;
+    var h = 0.00000001;
     var d = 1 / (h * 2);
 
     return function (p) {
@@ -171,19 +174,70 @@ function gradient(fun) {
     }
 }
 
-function createOptimizers(fun, start, learningRate, momentumTerm, smoothingTerm) {
-    var g = gradient(fun);
+var optimizers = {
+    'Gradient descent': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new GradientDescent(start, gradient, learningRate);
+        },
+        color: 'red'
+    },
+    'Momentum': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new Momentum(start, gradient, learningRate, momentumTerm);
+        },
+        color: 'lawngreen'
+    },
+    'Nesterov accelerated gradient': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new Nesterov(start, gradient, learningRate, momentumTerm);
+        },
+        color: 'pink'
+    },
+    'Adagrad': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new Adagrad(start, gradient, learningRate);
+        },
+        color: 'blue'
+    },
+    'Adadelta': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new Adadelta(start, gradient, smoothingTerm);
+        },
+        color: 'yellow'
+    },
+    'Adam': {
+        factory: function (start, gradient, learningRate, momentumTerm, smoothingTerm, smoothingTerm2) {
+            return new Adam(start, gradient, learningRate, smoothingTerm, smoothingTerm2);
+        },
+        color: 'maroon'
+    }
+};
 
-    return [
-        new GradientDescent(start, g, learningRate),
-        new Momentum(start, g, learningRate, momentumTerm),
-        new Nesterov(start, g, learningRate, momentumTerm),
-        new Adagrad(start, g, learningRate),
-        new Adadelta(start, g, smoothingTerm)
-    ];
-}
+$.each(optimizers, function (key, value) {
+    var paragraph = document.createElement('p');
 
-function createPath(fun, optimizer, epsilon, iterations, color) {
+    var checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = true;
+    checkbox.id = key.replace(/\s/g, '');
+    checkbox.onchange = function () {
+        togglePath(key);
+    };
+
+    var label = document.createElement('label');
+    label.className = 'optimizer';
+    label.style.color = value.color;
+    label.htmlFor = checkbox.id;
+    label.appendChild(document.createTextNode(key));
+
+    paragraph.appendChild(checkbox);
+    paragraph.appendChild(label);
+    checkboxes.appendChild(paragraph);
+
+    value.visible = true;
+});
+
+function createPath(fun, optimizer, offset, iterations, color) {
     var path = optimizer.take(iterations);
     var x = path.map(function (it) {
         return it[0];
@@ -192,7 +246,7 @@ function createPath(fun, optimizer, epsilon, iterations, color) {
         return it[1];
     });
     var z = path.map(function (it) {
-        return fun(it[0], it[1]) + epsilon;
+        return fun(it[0], it[1]) + offset;
     });
 
     return {
@@ -210,7 +264,6 @@ function createPath(fun, optimizer, epsilon, iterations, color) {
 }
 
 var numOfPaths = 0;
-
 function clearPaths() {
     for (var i = 0; i < numOfPaths; i++) {
         Plotly.deleteTraces(plot, 1);
@@ -219,35 +272,45 @@ function clearPaths() {
     numOfPaths = 0;
 }
 
-function drawPath(path) {
-    Plotly.plot(plot, [path]);
-    numOfPaths++;
+function drawPaths() {
+    $.each(optimizers, function (key, value) {
+        if (value.visible) {
+            Plotly.plot(plot, [value.path]);
+            numOfPaths++;
+        }
+    });
 }
 
 function optimize() {
     var body = textarea.value;
     var fun = Function("x", "y", body);
 
-    var x = parseFloat(startx.value);
-    var y = parseFloat(starty.value);
     var rngz = [parseFloat(zstart.value), parseFloat(zend.value)];
-
-    var optimizers = createOptimizers(fun, [x, y], parseFloat(learning.value), parseFloat(momentum.value), parseFloat(smoothing.value));
     var epsilon = (rngz[1] - rngz[0]) * .005;
-    var iter = parseInt(iterations.value);
+    var iters = parseInt(iterations.value);
 
+    var start = [parseFloat(startx.value), parseFloat(starty.value)];
+    var grad = gradient(fun);
+    var learningRate = parseFloat(learning.value);
+    var momentumTerm = parseFloat(momentum.value);
+    var smoothingTerm = parseFloat(smoothing.value);
+    var smoothingTerm2 = parseFloat(smoothing2.value);
+
+    var offset = epsilon;
+    $.each(optimizers, function (key, value) {
+        var optimizer = value.factory(start, grad, learningRate, momentumTerm, smoothingTerm, smoothingTerm2);
+        value.path = createPath(fun, optimizer, offset, iters, value.color);
+        offset += epsilon;
+    });
+}
+
+function togglePath(key) {
+    optimizers[key].visible = !(optimizers[key].visible);
     clearPaths();
-
-    drawPath(createPath(fun, optimizers[0], epsilon, iter, 'red'));
-    drawPath(createPath(fun, optimizers[1], epsilon * 1.5, iter, 'lawngreen'));
-    drawPath(createPath(fun, optimizers[2], epsilon * 2, iter, 'pink'));
-    drawPath(createPath(fun, optimizers[3], epsilon * 2.5, iter, 'blue'));
-    drawPath(createPath(fun, optimizers[4], epsilon * 3, iter, 'yellow'));
+    drawPaths();
 }
 
 function drawPlot() {
-    numOfPaths = 0;
-
     var body = textarea.value;
     var fun = Function("x", "y", body);
 
@@ -273,7 +336,9 @@ function drawPlot() {
     };
 
     Plotly.newPlot(plot, [data], layout);
+    numOfPaths = 0;
     optimize();
+    drawPaths();
 
     plot.on('plotly_click', function (data) {
         if (data.points.length === 1) {
@@ -295,7 +360,9 @@ plotButton.onclick = function () {
 };
 
 optimizeButton.onclick = function () {
+    clearPaths();
     optimize();
+    drawPaths();
 };
 
 select.onchange = function () {

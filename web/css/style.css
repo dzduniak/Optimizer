@@ -57,3 +57,12 @@ input.number {
     height: 2em;
     margin-right: .7em;
 }
+
+label.optimizer {
+    font-family: Arial, sans-serif;
+    font-size: 150%;
+    font-weight: bold;
+    margin-left: .3em;
+    -webkit-text-stroke: 1px black;
+
+}
