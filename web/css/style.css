@@ -1,0 +1,59 @@
+html, body {
+    height: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#left-component {
+    right: 30em;
+    margin-right: 5px;
+    min-width: 30em;
+}
+
+#my-divider {
+    right: 30em;
+    width: 5px;
+}
+
+#right-component {
+    width: 30em;
+    min-width: 20em;
+}
+
+#plot {
+    margin: .5em;
+    width: calc(100% - 1em);
+    height: calc(100% - 1em);
+    overflow: hidden;
+}
+
+#controls {
+    margin-left: .5em;
+    margin-right: .5em;
+    width: calc(100% - 1em);
+    height: calc(100% - 1em);
+}
+
+#function {
+    width: calc(100% - 1.5em);
+    max-width: calc(100% - 1.5em);
+    margin-left: 1em;
+}
+
+#select {
+    width: calc(100%);
+}
+
+input.number {
+    text-align: right;
+    width: 5em;
+    margin-left: .5em;
+    margin-right: .5em;
+}
+
+#plotButton, #optimizeButton {
+    width: 7em;
+    height: 2em;
+    margin-right: .7em;
+}
