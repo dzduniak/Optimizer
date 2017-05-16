@@ -25,9 +25,17 @@ var iterations = document.getElementById('iterations');
 iterations.onchange = function () {
     iterations.value = Math.floor(Math.abs(parseFloat(iterations.value)));
 };
+var deltaFrames = 1;
+var frameCount = document.getElementById('frameCount');
+frameCount.onchange = function () {
+    var value = Math.floor(Math.abs(parseFloat(frameCount.value)))
+    frameCount.value = value;
+    deltaFrames = value;
+};
 
 var plotButton = document.getElementById('plotButton');
 var optimizeButton = document.getElementById('optimizeButton');
+var animateButton = document.getElementById('animateButton');
 
 var checkboxes = document.getElementById('checkboxes');
 
@@ -263,6 +271,14 @@ function createPath(fun, optimizer, offset, iterations, color) {
     };
 }
 
+function copyPath(path) {
+    return {
+        x: path.x.slice(),
+        y: path.y.slice(),
+        z: path.z.slice()
+    }
+}
+
 var numOfPaths = 0;
 function clearPaths() {
     for (var i = 0; i < numOfPaths; i++) {
@@ -282,12 +298,16 @@ function drawPaths() {
 }
 
 function optimize() {
+    animationEnabled = false;
+    animateButton.textContent = "Animate"
     var body = textarea.value;
     var fun = Function("x", "y", body);
 
     var rngz = [parseFloat(zstart.value), parseFloat(zend.value)];
     var epsilon = (rngz[1] - rngz[0]) * .005;
     var iters = parseInt(iterations.value);
+    currentFrame = iters;
+    maxFrame = iters;
 
     var start = [parseFloat(startx.value), parseFloat(starty.value)];
     var grad = gradient(fun);
@@ -300,14 +320,41 @@ function optimize() {
     $.each(optimizers, function (key, value) {
         var optimizer = value.factory(start, grad, learningRate, momentumTerm, smoothingTerm, smoothingTerm2);
         value.path = createPath(fun, optimizer, offset, iters, value.color);
+        value.frames = makeFrames(value.path, maxFrame);
         offset += epsilon;
     });
 }
 
 function togglePath(key) {
     optimizers[key].visible = !(optimizers[key].visible);
-    clearPaths();
-    drawPaths();
+    var i = Object.keys(optimizers).indexOf(key);
+    if (!optimizers[key].visible) {
+        Plotly.animate(plot, {
+            data: [{x: [], y: [], z: []}],
+            traces: [i + 1]
+        }, {
+            transition: {
+                duration: 0
+            },
+            frame: {
+                duration: 0,
+                redraw: false
+            }
+        });
+    } else {
+        Plotly.animate(plot, {
+            data: [optimizers[key].frames[currentFrame]],
+            traces: [i + 1]
+        }, {
+            transition: {
+                duration: 0
+            },
+            frame: {
+                duration: 0,
+                redraw: false
+            }
+        });
+    }
 }
 
 function drawPlot() {
@@ -344,10 +391,63 @@ function drawPlot() {
         if (data.points.length === 1) {
             var point = data.points[0];
 
-            startx.value = point.x.replace("\u2212", "-");
-            starty.value = point.y.replace("\u2212", "-");
+            startx.value = point.x.toPrecision(4) / 1;
+            starty.value = point.y.toPrecision(4) / 1;
         }
     });
+}
+
+function makeFrames(path, i) {
+    var frames = [];
+
+    function helper(a, i) {
+        return a.slice(0, i + 1);
+    }
+
+    for (var f = 0; f<=i; f++) {
+        var x = helper(path.x, f);
+        var y = helper(path.y, f);
+        var z = helper(path.z, f);
+
+        frames.push({x: x, y: y, z: z});
+    }
+
+    return frames;
+}
+
+var animationEnabled = false;
+var currentFrame = 0;
+var maxFrame = 300;
+function animate() {
+    var traces = [];
+    var frames = [];
+    $.each(optimizers, function (key, optimizer) {
+        if (optimizer.visible) {
+            var i = Object.keys(optimizers).indexOf(key);
+            frames.push(optimizer.frames[currentFrame]);
+            traces.push(i + 1);
+        }
+    });
+
+    Plotly.animate(plot, {
+        data: frames,
+        traces: traces
+    }, {
+        transition: {
+            duration: 0
+        },
+        frame: {
+            duration: 0,
+            redraw: false
+        }
+    });
+
+    currentFrame += deltaFrames;
+    if (currentFrame > maxFrame)
+        currentFrame = 0;
+
+    if (animationEnabled)
+        requestAnimationFrame(animate);
 }
 
 var pane = $('div.split-pane');
@@ -363,6 +463,16 @@ optimizeButton.onclick = function () {
     clearPaths();
     optimize();
     drawPaths();
+};
+
+animateButton.onclick = function () {
+    animationEnabled = !animationEnabled;
+    if (animationEnabled) {
+        animate();
+        animateButton.textContent = "Pause";
+    } else {
+        animateButton.textContent = "Animate";
+    }
 };
 
 select.onchange = function () {

@@ -112,7 +112,7 @@ Adagrad.prototype = Object.create(Optimizer.prototype);
 Adagrad.prototype.constructor = Adagrad;
 
 Adagrad.prototype.next = function () {
-    var epsilon = 0.00000001;
+    var epsilon = 0.000001;
     var learningRate = this.learningRate;
     var gradient = this.gradient(this.current);
     this.gt = this.gt.map(function (gt, i) {
@@ -144,7 +144,7 @@ Adadelta.prototype = Object.create(Optimizer.prototype);
 Adadelta.prototype.constructor = Adadelta;
 
 Adadelta.prototype.next = function () {
-    var epsilon = 0.00000001;
+    var epsilon = 0.000001;
     var s = this.smoothingTerm;
     var vt = this.vt;
     var gradient = this.gradient(this.current);
@@ -182,7 +182,7 @@ Adam.prototype = Object.create(Optimizer.prototype);
 Adam.prototype.constructor = Adam;
 
 Adam.prototype.next = function () {
-    var epsilon = 0.00000001;
+    var epsilon = 0.000001;
 
     this.t++;
     var t = this.t;
